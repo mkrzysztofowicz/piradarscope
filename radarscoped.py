@@ -315,7 +315,7 @@ class RadarDaemon(Daemon):
         shape = uh.get_shape()
         x = math.floor(shape[0] / 2)
         y = math.floor(shape[1] / 2)
-        return x, y
+        return int(x), int(y)
 
     @staticmethod
     def pixel_radius():
@@ -381,22 +381,30 @@ class RadarDaemon(Daemon):
     def hsv2rgb(h, s, v):
         return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
-    def get_altitude_colour(self, altitude):
+    def get_altitude_colour(self, altitude, highlight=False):
         hue = self.normalise(altitude, min_value=0, max_value=40000, bottom=0.0, top=0.85)
-        return self.hsv2rgb(hue, 1, 1)
+        if highlight:
+            intensity = 1
+        else:
+            intensity = 0.66
+        return self.hsv2rgb(hue, 1, intensity)
 
     def plot_positions(self, positions, radius):
         origin = self.get_origin()
 
         uh.off()
+        rcvr = self.pixel_origin()
+        uh.set_pixel(rcvr[0], rcvr[1], 128, 128, 128)
 
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
-            colour = self.get_altitude_colour(position[2])
+            if pixel == rcvr:
+                highlight = True
+            else:
+                highlight = False
+            colour = self.get_altitude_colour(position[2], highlight = highlight)
             uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
-        rcvr = self.pixel_origin()
-        uh.set_pixel(rcvr[0], rcvr[1], 255, 255, 255)
         uh.show()
 
     def run(self):
@@ -413,7 +421,7 @@ class RadarDaemon(Daemon):
                         alt = 0
                     ac_positions.append([lat, lon, alt])
 
-            self.plot_positions(ac_positions, 72)
+            self.plot_positions(ac_positions, self.scope_radius)
             time.sleep(5)
 
     def start(self, scope_radius=None, username=None):
