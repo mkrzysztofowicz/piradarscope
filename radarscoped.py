@@ -315,8 +315,8 @@ class RadarDaemon(Daemon):
     @staticmethod
     def pixel_origin():
         shape = uh.get_shape()
-        x = shape[0] / 2
-        y = shape[1] / 2
+        x = math.floor(shape[0] / 2)
+        y = math.floor(shape[1] / 2)
         return x, y
 
     @staticmethod
@@ -384,7 +384,7 @@ class RadarDaemon(Daemon):
         return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
     def get_altitude_colour(self, altitude):
-        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0.1, top=0.8)
+        hue = self.normalise(altitude, min_value=0, max_value=40000, bottom=0.0, top=0.85)
         return self.hsv2rgb(hue, 1, 1)
 
     def plot_positions(self, positions, radius):
@@ -422,6 +422,10 @@ class RadarDaemon(Daemon):
         if scope_radius:
             self.scope_radius = scope_radius
         super().start(username=username)
+
+    def stop(self, silent=False):
+        uh.off()
+        super().stop(silent)
 
 
 def main():
