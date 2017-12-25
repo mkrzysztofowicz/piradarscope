@@ -3,7 +3,7 @@
 """
 Radar Scope Daemon
 
-This program displays relative positions of aircraft received with ADSB receiver on the Unicorn Hat HD.
+This program displays relative positions of aircraft received with ADSB receiver on the UnicornHat HD.
 The receiver location is in the middle of the screen.
 
 """
@@ -264,18 +264,58 @@ class Daemon(object):
 
 
 class RadarDaemon(Daemon):
+    """
+    Subclass of the Daemon class.
+
+    This subclass builds on top of the generic Daemon class to implement a daemon process, reading a list of aircraft
+    within the range of the ADSB receiver and plotting their relative positions to that of the receiver on the
+    UnicornHAT HD mounted on the host Raspberry PI.
+    """
 
     def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+        """
+        Override the init() method of the Daemon class to add extra properties.
+        """
         super().__init__(pidfile, stdin, stdout, stderr, daemon_name="radarscoped")
-        self.receiverurl = "http://piradar/dump1090-fa/data/receiver.json"
-        self.aircrafturl = "http://piradar/dump1090-fa/data/aircraft.json"
+        self.adsb_host = 'localhost'
+        self.receiverurl = "dump1090-fa/data/receiver.json"
+        self.aircrafturl = "dump1090-fa/data/aircraft.json"
         self.scope_radius = None
 
     @staticmethod
     def lon_length(latitude):
+        """
+        Calculate the length in Nautical Miles of 1 degree of longitude at a given latitude.
+        At the equator, 1 degree of longitude will be 1NM, while at the pole, it will be 0.
+
+        :param float latitude: the latitude at which to calculate the length of 1 degree of longitude.
+        :return: a fraction of the Nautical Mile representing the distance of 1 degree of longitude.
+        """
+
         return 60 * math.cos(math.radians(latitude))
 
     def coord_span(self, radius, origin=(0, 0)):
+        """
+        Calculate the span of latitudes and longitudes "visible" on the screen for a given radius (in Nautical Miles)
+        from the centre position as set by the origin.
+
+        For example, given GPS coordinates of the origin as (53, -6) and a radius of 72 NM, the span of coordinates
+        visible on the screen will be:
+
+            minimum latitude:   51.8°
+            maximum latitude:   54.2°
+            span of latitudes:   1.2°
+
+            minimum longitude:  -7.99°
+            maximum longitude:  -4.00°
+            span of longitudes:  1.99°
+
+        :param int radius: the radius for which to calculate the lat/lon span
+        :param (float, float) origin: GPS coordinates of centre point
+        :return: a dictionary with minimum, maximum and spans for latitudes and longitudes
+        :rtype: dict
+        """
+
         lat = origin[0]
         lon = origin[1]
 
@@ -297,21 +337,55 @@ class RadarDaemon(Daemon):
 
     @staticmethod
     def get_json(url):
+        """
+        Fetch JSON data from a web server and return a dictionary with same.
+
+        :param str url: URL where to fetch the JSON data from
+        :return: a dictionary with JSON data
+        :rtype: dict
+        """
+
         request = urllib.request.urlopen(url)
         data = request.read()
         encoding = request.info().get_content_charset('utf-8')
         json_data = json.loads(data.decode(encoding))
         return json_data
 
-    def get_origin(self):
-        data = self.get_json(self.receiverurl)
+    def get_aircraft(self):
+        """
+        Get a list of aircraft within the range of the ADSB receiver
 
+        :return: a dictionary with all aircraft in the range of the receiver.
+        :rtype: dict
+        """
+
+        url = 'http://{}/{}'.format(self.adsb_host, self.aircrafturl)
+        data = self.get_json(url)
+        return data["aircraft"]
+
+    def get_receiver_origin(self):
+        """
+        Get the GPS coordinates of the ADSB receiver
+
+        :return: lat/lon of the ADSB receiver
+        :rtype: (float, float)
+        """
+        url = 'http://{}/{}'.format(self.adsb_host, self.receiverurl)
+        data = self.get_json(url)
         latitude = data["lat"]
         longitude = data["lon"]
         return latitude, longitude
 
     @staticmethod
     def pixel_origin():
+        """
+        Get the pixel coordinates of the ADSB receiver on the UnicornHat HD
+
+        This should always be the centre of the LED matrix.
+        :return: pixel coordinates of the ADSB receiver
+        :rtype: (int, int)
+        """
+
         shape = uh.get_shape()
         x = math.floor(shape[0] / 2)
         y = math.floor(shape[1] / 2)
@@ -319,15 +393,30 @@ class RadarDaemon(Daemon):
 
     @staticmethod
     def pixel_radius():
+        """
+        Find and return the radius in pixels for the LED Matrix.
+
+        This function will return a minimum of half the length or half the height of the screen in pixels.
+        :return: a length of radius in pixels
+        :rtype: int
+        """
+
         shape = uh.get_shape()
         radius = math.floor(min(shape[0] / 2, shape[1] / 2))
         return radius
 
-    def get_aircraft(self):
-        data = self.get_json(self.aircrafturl)
-        return data["aircraft"]
-
     def pixel_pos(self, radius, origin, position):
+        """
+        Calculate the pixel coordinates for a GPS position given the GPS coordinates of the origin and a radius in
+        Nautical Miles.
+
+        :param int radius: radius in Nautical Miles
+        :param (float, float) origin: GPS coordinates of the centre point (origin)
+        :param (float, float) position: GPS coordinates to plot (i.e. of the aircraft)
+        :return: a tuple of pixel coordinates (x, y)
+        :rtype: (int, int)
+        """
+
         span = self.coord_span(radius, origin)
         shape = uh.get_shape()
 
@@ -370,6 +459,22 @@ class RadarDaemon(Daemon):
 
     @staticmethod
     def normalise(value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
+        """
+        Scale a measured value (by default from a range 0..45000) to a fraction between 0.0 and 1.0.
+
+        All values below or above the min/max range are clipped to min/max respectively.
+
+        The calculation is taken from Ask Dr Math page:
+        http://mathforum.org/library/drmath/view/60433.html
+
+        :param float value: actual measured value
+        :param float min_value: minimum of the range of values
+        :param float max_value: maximum of the range of values
+        :param float bottom: minimum of the normalised range
+        :param float top: maximum of the normalised range
+        :return: a normalised value
+        :rtype: float
+        """
         if value < min_value:
             value = min_value
         if value > max_value:
@@ -379,9 +484,46 @@ class RadarDaemon(Daemon):
 
     @staticmethod
     def hsv2rgb(h, s, v):
+        """
+        A wrapper method for colorsys.hsv_to_rgb().
+
+        The colorsys.hsv_to_rgb() uses and returns normalised values for each colour coordinate (i.e. values from
+        0.0 to 1.0). unicornhathd.set_pixel() requires RGB colors as values from 0 to 255.
+
+        This method converts normalised values to 8-bit integers.
+
+        :param float h: hue
+        :param float s: saturation
+        :param float v: value
+        :return: RGB colour components as (r, g, b)
+        :rtype: (int, int, int)
+        """
         return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
-    def get_altitude_colour(self, altitude, highlight=False):
+    def get_altitude_colour(self, altitude=None, highlight=False):
+        """
+        Get a colour corresponding to a given altitude.
+
+        This calculates an RGB colour for any altitude between 0 and 45000ft in a similar fashion as per dump1090-fa
+        web interface.
+
+        If altitude is None, this method will simply return a dark gray colour.
+
+        The highlight parameter, if set, will make the pixel appear brighter and can be used for visualising
+        either two aircraft overlapping, or an aircraft directly overhead the receiver.
+
+        :param float altitude: altitude in feet
+        :param bool highlight: make the pixel brighter
+        :return: colour values in RGB
+        :rtype: (int, int, int)
+        """
+
+        if type(altitude) is not int:
+            altitude = None
+
+        if altitude is None or altitude < 0:            # handle special case of unknown altitude
+            return 64, 64, 64
+
         hue = self.normalise(altitude, min_value=0, max_value=40000, bottom=0.0, top=0.85)
         if highlight:
             intensity = 1
@@ -390,50 +532,83 @@ class RadarDaemon(Daemon):
         return self.hsv2rgb(hue, 1, intensity)
 
     def plot_positions(self, positions, radius):
-        origin = self.get_origin()
+        """
+        Plot aircraft positions on the UnicornHAT HD.
 
-        uh.off()
+        :param list[(float, float, float)] positions: list of aircraft positions, \
+                where each element of the list is a tuple of lat, lon, altitude for a given aircraft
+        :param int radius: radius in Nautical Miles
+        """
+        origin = self.get_receiver_origin()
+
+        # clear the display buffer
+        uh.clear()
         rcvr = self.pixel_origin()
-        uh.set_pixel(rcvr[0], rcvr[1], 128, 128, 128)
+        uh.set_pixel(rcvr[0], rcvr[1], 128, 128, 128)   # display the position of the receiver on the UnicornHAT
 
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
+
+            # make the pixel extra bright if it's directly overhead the receiver
             if pixel == rcvr:
                 highlight = True
             else:
                 highlight = False
-            colour = self.get_altitude_colour(position[2], highlight = highlight)
+
+            colour = self.get_altitude_colour(position[2], highlight=highlight)
             uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
+        # redraw the screen
         uh.show()
 
     def run(self):
+        """
+        The RadarDaemon's run loop (the worker).
+        """
+
         while True:
             all_aircraft = self.get_aircraft()
             ac_positions = list()
             for plane in all_aircraft:
-                if "lat" in plane:
+                if "lat" in plane and "lon" in plane:
                     lat = plane["lat"]
                     lon = plane["lon"]
                     if "altitude" in plane:
                         alt = plane["altitude"]
                     else:
-                        alt = 0
+                        alt = None      # set to unknown value
                     ac_positions.append([lat, lon, alt])
 
             self.plot_positions(ac_positions, self.scope_radius)
-            time.sleep(5)
+            time.sleep(1)
 
     def start(self, scope_radius=None, username=None):
+        """
+        Override the Daemon.start() method to implement some extra customisation.
+
+        This method starts the RadarDaemon's worker process.
+
+        If scope_radius is provided, set the corresponding property to its value.
+        If username is provided, the daemon will drop its privileges to work as unprivileged user.
+        :param int scope_radius: radius in Nautical Miles
+        :param str username: if provided, the daemon will drop privileges to work as this user
+        """
         if scope_radius:
             self.scope_radius = scope_radius
         super().start(username=username)
 
     def stop(self, silent=False):
+        """
+        Override the Daemon.stop() method to implement turning off the UnicornHAT HD when the daemon exits.
+        :param bool silent: when set to true, this will log a message to indicate the daemon has been stopped.
+        """
         uh.off()
         super().stop(silent)
 
     def sigterm_handler(self, signo, frame):
+        """
+        Override the Daemon.sigterm_handle() method to turn off the UnicornHAT HD when the daemon process is terminated.
+        """
         uh.off()
         super().sigterm_handler(signo, frame)
 
@@ -449,6 +624,9 @@ def main():
     parser_start.add_argument('-u, --user', dest='username', help='user to run as', type=str, default=None)
     parser_start.add_argument('-r, --radius', dest='radius',
                               help='scope radius in Nautical Miles', type=int, default=72)
+    parser_start.add_argument('-a, --adsb-receiver-hostname',
+                              help='hostname of the ADSB receiver running dump1090-fa',
+                              type=str, default='localhost')
 
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
     parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
