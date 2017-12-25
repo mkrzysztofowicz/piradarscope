@@ -265,12 +265,11 @@ class Daemon(object):
 
 class RadarDaemon(Daemon):
 
-    def __init__(self, pidfile, scope_radius,
-                 stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         super().__init__(pidfile, stdin, stdout, stderr, daemon_name="radarscoped")
         self.receiverurl = "http://piradar/dump1090-fa/data/receiver.json"
         self.aircrafturl = "http://piradar/dump1090-fa/data/aircraft.json"
-        self.scope_radius = scope_radius
+        self.scope_radius = None
 
     # noinspection PyMethodMayBeStatic
     def normalise(self, value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
@@ -417,6 +416,11 @@ class RadarDaemon(Daemon):
             self.plot_positions(ac_positions, 72)
             time.sleep(5)
 
+    def start(self, scope_radius=None, username=None):
+        if scope_radius:
+            self.scope_radius = scope_radius
+        super().start(username=username)
+
 
 def main():
     """
@@ -439,7 +443,7 @@ def main():
     action = args.action
 
     # instantiate the daemon
-    radarscoped = RadarDaemon('/var/run/radarscoped.pid', args.radius)
+    radarscoped = RadarDaemon('/var/run/radarscoped.pid')
 
     if action == 'start':
         radarscoped.start(username=args.username)
