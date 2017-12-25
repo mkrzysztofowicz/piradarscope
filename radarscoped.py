@@ -81,7 +81,6 @@ class Daemon(object):
 
         self.fork()     # second fork, relinquish session leadership
 
-    # noinspection PyMethodMayBeStatic
     def fork(self):
         """
         Spawn the child process
@@ -253,7 +252,6 @@ class Daemon(object):
         # ensure reasonable mask
         os.umask(0o22)
 
-    # noinspection PyMethodMayBeStatic
     def sigterm_handler(self, signo, frame):
         self.logger.warning("Exiting.".format(signo))
         raise SystemExit(1)
@@ -423,6 +421,10 @@ class RadarDaemon(Daemon):
             self.scope_radius = scope_radius
         super().start(username=username)
 
+    def sigterm_handler(self, signo, frame):
+        uh.off()
+        super().sigterm_handler(signo, frame)
+
 
 def main():
     """
@@ -448,7 +450,7 @@ def main():
     radarscoped = RadarDaemon('/var/run/radarscoped.pid')
 
     if action == 'start':
-        radarscoped.start(username=args.username)
+        radarscoped.start(scope_radius=args.radius, username=args.username)
         pid = radarscoped.get_pid()
 
         if not pid:
