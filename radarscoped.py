@@ -271,17 +271,17 @@ class RadarDaemon(Daemon):
         self.aircrafturl = "http://piradar/dump1090-fa/data/aircraft.json"
         self.scope_radius = None
 
-    # noinspection PyMethodMayBeStatic
-    def normalise(self, value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
+    @staticmethod
+    def normalise(value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
         normalised = bottom + (value - min_value) * (top - bottom)/(max_value - min_value)
         return normalised
 
-    # noinspection PyMethodMayBeStatic
-    def hsv2rgb(self, h, s, v):
+    @staticmethod
+    def hsv2rgb(h, s, v):
         return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
 
-    # noinspection PyMethodMayBeStatic
-    def lon_length(self, latitude):
+    @staticmethod
+    def lon_length(latitude):
         return 60 * math.cos(math.radians(latitude))
 
     def coord_span(self, radius, origin=(0, 0)):
@@ -304,8 +304,8 @@ class RadarDaemon(Daemon):
             }
         }
 
-    # noinspection PyMethodMayBeStatic
-    def get_json(self, url):
+    @staticmethod
+    def get_json(url):
         request = urllib.request.urlopen(url)
         data = request.read()
         encoding = request.info().get_content_charset('utf-8')
@@ -319,15 +319,15 @@ class RadarDaemon(Daemon):
         longitude = data["lon"]
         return latitude, longitude
 
-    # noinspection PyMethodMayBeStatic
-    def pixel_origin(self):
+    @staticmethod
+    def pixel_origin():
         shape = uh.get_shape()
         x = shape[0] / 2
         y = shape[1] / 2
         return x, y
 
-    # noinspection PyMethodMayBeStatic
-    def pixel_radius(self):
+    @staticmethod
+    def pixel_radius():
         shape = uh.get_shape()
         radius = math.floor(min(shape[0] / 2, shape[1] / 2))
         return radius
@@ -377,7 +377,6 @@ class RadarDaemon(Daemon):
 
         return int(x), int(y)
 
-    # noinspection PyMethodMayBeStatic
     def get_altitude_colour(self, altitude):
         hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0, top=359)
         return self.hsv2rgb(hue, 1, 1)
