@@ -582,7 +582,7 @@ class RadarDaemon(Daemon):
             self.plot_positions(ac_positions, self.scope_radius)
             time.sleep(1)
 
-    def start(self, scope_radius=None, username=None):
+    def start(self, scope_radius=None, username=None, adsb_hostname=None):
         """
         Override the Daemon.start() method to implement some extra customisation.
 
@@ -592,9 +592,13 @@ class RadarDaemon(Daemon):
         If username is provided, the daemon will drop its privileges to work as unprivileged user.
         :param int scope_radius: radius in Nautical Miles
         :param str username: if provided, the daemon will drop privileges to work as this user
+        :param str adsb_hostname: if provided, fetch the aircraft data from this hostname instead of localhost
         """
         if scope_radius:
             self.scope_radius = scope_radius
+
+        if adsb_hostname:
+            self.adsb_host = adsb_hostname
         super().start(username=username)
 
     def stop(self, silent=False):
@@ -624,13 +628,14 @@ def main():
     parser_start.add_argument('-u, --user', dest='username', help='user to run as', type=str, default=None)
     parser_start.add_argument('-r, --radius', dest='radius',
                               help='scope radius in Nautical Miles', type=int, default=72)
-    parser_start.add_argument('-a, --adsb-receiver-hostname',
+    parser_start.add_argument('-a, --adsb-receiver-hostname', dest='hostname',
                               help='hostname of the ADSB receiver running dump1090-fa',
                               type=str, default='localhost')
 
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
     parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
     parser_status = subparsers.add_parser('status', help='get status for radarscoped')
+
     subparsers.required = True
 
     args = parser.parse_args()
@@ -640,7 +645,7 @@ def main():
     radarscoped = RadarDaemon('/var/run/radarscoped.pid')
 
     if action == 'start':
-        radarscoped.start(scope_radius=args.radius, username=args.username)
+        radarscoped.start(scope_radius=args.radius, username=args.username, adsb_hostname=args.hostname)
         pid = radarscoped.get_pid()
 
         if not pid:
