@@ -42,9 +42,9 @@ class Daemon(object):
         self.name = daemon_name
         self.logger = logging.getLogger(self.name)
         self.setup_logging()
+        self.logger.setLevel(logging.DEBUG)
 
     def setup_logging(self):
-        self.logger.setLevel(logging.DEBUG)
 
         logformatter = logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
 
@@ -281,6 +281,7 @@ class RadarDaemon(Daemon):
         self.receiverurl = "dump1090-fa/data/receiver.json"
         self.aircrafturl = "dump1090-fa/data/aircraft.json"
         self.scope_radius = None
+        self.logger.setLevel(logging.INFO)
 
     @staticmethod
     def lon_length(latitude):
@@ -579,6 +580,7 @@ class RadarDaemon(Daemon):
                         alt = None      # set to unknown value
                     ac_positions.append([lat, lon, alt])
 
+            self.logger.debug('{} aircraft in range'.format(len(ac_positions)))
             self.plot_positions(ac_positions, self.scope_radius)
             time.sleep(1)
 
@@ -599,6 +601,7 @@ class RadarDaemon(Daemon):
 
         if adsb_hostname:
             self.adsb_host = adsb_hostname
+
         super().start(username=username)
 
     def stop(self, silent=False):
