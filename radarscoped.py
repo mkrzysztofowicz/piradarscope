@@ -8,6 +8,7 @@ The receiver location is in the middle of the screen.
 
 import argparse
 import atexit
+import colorsys
 import grp
 import json
 import logging
@@ -272,6 +273,15 @@ class RadarDaemon(Daemon):
         self.scope_radius = scope_radius
 
     # noinspection PyMethodMayBeStatic
+    def normalise(self, value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
+        normalised = bottom + (value - min_value) * (top - bottom)/(max_value - min_value)
+        return normalised
+
+    # noinspection PyMethodMayBeStatic
+    def hsv2rgb(self, h, s, v):
+        return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+
+    # noinspection PyMethodMayBeStatic
     def lon_length(self, latitude):
         return 60 * math.cos(math.radians(latitude))
 
@@ -370,22 +380,9 @@ class RadarDaemon(Daemon):
 
     # noinspection PyMethodMayBeStatic
     def get_altitude_colour(self, altitude):
-
-        colour = (64, 64, 64)
-        if 0 < altitude <= 2000:
-            colour = (192, 128, 0)
-        elif 2000 < altitude <= 6000:
-            colour = (255, 128, 0)
-        elif 6000 < altitude <= 10000:
-            colour = (0, 255, 0)
-        elif 10000 < altitude <= 20000:
-            colour = (0, 255, 255)
-        elif 20000 < altitude <= 30000:
-            colour = (0, 0, 255)
-        elif altitude > 30000:
-            colour = (255, 0, 255)
-
-        return colour
+        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0, top=359)
+        hsv = (hue, 1, 1)
+        return self.hsv2rgb(hsv)
 
     def plot_positions(self, positions, radius):
         origin = self.get_origin()
