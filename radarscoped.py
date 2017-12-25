@@ -46,7 +46,7 @@ class Daemon(object):
 
     def setup_logging(self):
 
-        logformatter = logging.Formatter('%(name)s: [%(levelname)s] %(message)s')
+        logformatter = logging.Formatter('%(name)s[%(process)s]: [%(levelname)s] %(message)s')
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.ERROR)
