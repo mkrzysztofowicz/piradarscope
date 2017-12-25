@@ -378,7 +378,7 @@ class RadarDaemon(Daemon):
         return int(x), int(y)
 
     def get_altitude_colour(self, altitude):
-        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0, top=359)
+        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0, top=1)
         return self.hsv2rgb(hue, 1, 1)
 
     def plot_positions(self, positions, radius):
