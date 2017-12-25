@@ -272,15 +272,6 @@ class RadarDaemon(Daemon):
         self.scope_radius = None
 
     @staticmethod
-    def normalise(value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
-        normalised = bottom + (value - min_value) * (top - bottom)/(max_value - min_value)
-        return normalised
-
-    @staticmethod
-    def hsv2rgb(h, s, v):
-        return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
-
-    @staticmethod
     def lon_length(latitude):
         return 60 * math.cos(math.radians(latitude))
 
@@ -377,8 +368,21 @@ class RadarDaemon(Daemon):
 
         return int(x), int(y)
 
+    @staticmethod
+    def normalise(value, min_value=0, max_value=45000, bottom=0.0, top=1.0):
+        if value < min_value:
+            value = min_value
+        if value > max_value:
+            value = max_value
+        normalised = bottom + (value - min_value) * (top - bottom)/(max_value - min_value)
+        return normalised
+
+    @staticmethod
+    def hsv2rgb(h, s, v):
+        return tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+
     def get_altitude_colour(self, altitude):
-        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0, top=1)
+        hue = self.normalise(altitude, min_value=0, max_value=45000, bottom=0.1, top=0.8)
         return self.hsv2rgb(hue, 1, 1)
 
     def plot_positions(self, positions, radius):
