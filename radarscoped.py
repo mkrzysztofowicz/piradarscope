@@ -393,7 +393,6 @@ class RadarDaemon(Daemon):
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
             colour = self.get_altitude_colour(position[2])
-            print("aircraft: {}, {}".format(pixel[0], pixel[1]))
             uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
         rcvr = self.pixel_origin()
@@ -413,7 +412,6 @@ class RadarDaemon(Daemon):
                     else:
                         alt = 0
                     ac_positions.append([lat, lon, alt])
-                    print("lat: {}, lon: {}, alt: {}".format(lat, lon, alt))
 
             self.plot_positions(ac_positions, 72)
             time.sleep(5)
