@@ -421,15 +421,13 @@ class RadarDaemon(Daemon):
             self.scope_radius = scope_radius
         super().start(username=username)
 
-<<<<<<< HEAD
     def stop(self, silent=False):
         uh.off()
         super().stop(silent)
-=======
+
     def sigterm_handler(self, signo, frame):
         uh.off()
         super().sigterm_handler(signo, frame)
->>>>>>> 143bac00bfad5c836f7cd52e60fcefbfc3e36e1c
 
 
 def main():
