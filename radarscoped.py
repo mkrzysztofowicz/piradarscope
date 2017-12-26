@@ -11,6 +11,7 @@ The receiver location is in the middle of the screen.
 import argparse
 import atexit
 import colorsys
+import configparser
 import grp
 import json
 import logging
@@ -33,7 +34,8 @@ class Daemon(object):
     Subclass the Daemon class and override the run() method
     """
 
-    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null', daemon_name="Daemon"):
+    def __init__(self, pidfile, config_file=None,
+                 stdin='/dev/null', stdout='/dev/null', stderr='/dev/null', daemon_name="Daemon"):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -43,6 +45,18 @@ class Daemon(object):
         self.logger = logging.getLogger(self.name)
         self.setup_logging()
         self.logger.setLevel(logging.DEBUG)
+        self.config_file = config_file
+
+        if self.config_file is not None:
+            self.configuration = configparser.ConfigParser()
+            self.configure()
+
+    def configure(self):
+        """
+        Parse the configuration file and configure the daemon.
+        This method has to be overridden when subclassing the Daemon.
+        """
+        raise NotImplementedError
 
     def setup_logging(self):
         """
@@ -324,17 +338,53 @@ class RadarDaemon(Daemon):
     UnicornHAT HD mounted on the host Raspberry PI.
     """
 
-    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+    def __init__(self, pidfile, config_file=None, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         """
         Override the init() method of the Daemon class to add extra properties.
         """
-        super().__init__(pidfile, stdin, stdout, stderr, daemon_name="radarscoped")
+        super().__init__(pidfile, config_file, stdin, stdout, stderr, daemon_name="radarscoped")
         self.adsb_host = 'localhost'
-        self.receiverurl = "dump1090-fa/data/receiver.json"
-        self.aircrafturl = "dump1090-fa/data/aircraft.json"
+        self.receiverurl = "http://{}/dump1090-fa/data/receiver.json".format(self.adsb_host)
+        self.aircrafturl = "http://{}/dump1090-fa/data/aircraft.json".format(self.adsb_host)
         self.scope_radius = None
         self.logger.setLevel(logging.INFO)
         self.airports = list()
+
+    def configure(self):
+        """
+        Override the Daemon.configure() method to configure RadarDaemon.
+        """
+        self.configuration.read(self.config_file)
+
+        if self.configuration.has_section('main'):
+            if not self.username:
+                if 'username' in self.configuration['main']:
+                    self.username = self.configuration.get('main', 'username')
+
+            loglevel = self.configuration.get('main', 'loglevel', fallback='INFO')
+            loglevel = getattr(logging, loglevel.upper())
+            self.logger.setLevel(loglevel)
+
+        if self.configuration.has_section('scope'):
+            if not self.scope_radius:
+                self.scope_radius = self.configuration.getint('scope', 'radius', fallback=60)
+
+        if self.configuration.has_section('ADSB'):
+            self.adsb_host = self.configuration.get('ADSB', 'adsb_host', fallback='localhost')
+            self.receiverurl = self.configuration.get('ADSB', 'receiver_url',
+                                                      fallback='http://{}/dump1090-fa/data/receiver.json'.format(
+                                                          self.adsb_host
+                                                      ))
+            self.aircrafturl = self.configuration.get('ADSB', 'aircraft_url',
+                                                      fallback='http://{}/dump1090-fa/data/aircraft.json'.format(
+                                                          self.adsb_host
+                                                      ))
+
+        if self.configuration.has_section('airports'):
+            for airport in self.configuration.items(section='airports'):
+                icao_code = airport[0]
+                coordinates = airport[1].strip().split(',')
+                self.add_airport(icao_code, coordinates[0], coordinates[1])
 
     def add_airport(self, icao_code, latitude, longitude):
         """
@@ -427,8 +477,7 @@ class RadarDaemon(Daemon):
         :rtype: dict
         """
 
-        url = 'http://{}/{}'.format(self.adsb_host, self.aircrafturl)
-        data = self.get_json(url)
+        data = self.get_json(self.aircrafturl)
         return data["aircraft"]
 
     def get_receiver_origin(self):
@@ -438,8 +487,8 @@ class RadarDaemon(Daemon):
         :return: lat/lon of the ADSB receiver
         :rtype: (float, float)
         """
-        url = 'http://{}/{}'.format(self.adsb_host, self.receiverurl)
-        data = self.get_json(url)
+
+        data = self.get_json(self.receiverurl)
         latitude = data["lat"]
         longitude = data["lon"]
         return latitude, longitude
@@ -601,7 +650,7 @@ class RadarDaemon(Daemon):
             saturation = 1
         return self.hsv2rgb(hue, saturation, intensity)
 
-    def plot(self, positions, radius):
+    def plot(self, positions, radius=60):
         """
         Plot aircraft positions on the UnicornHAT HD.
 
@@ -658,26 +707,6 @@ class RadarDaemon(Daemon):
             self.plot(ac_positions, self.scope_radius)
             time.sleep(1)
 
-    def start(self, scope_radius=None, username=None, adsb_hostname=None):
-        """
-        Override the Daemon.start() method to implement some extra customisation.
-
-        This method starts the RadarDaemon's worker process.
-
-        If scope_radius is provided, set the corresponding property to its value.
-        If username is provided, the daemon will drop its privileges to work as unprivileged user.
-        :param int scope_radius: radius in Nautical Miles
-        :param str username: if provided, the daemon will drop privileges to work as this user
-        :param str adsb_hostname: if provided, fetch the aircraft data from this hostname instead of localhost
-        """
-        if scope_radius:
-            self.scope_radius = scope_radius
-
-        if adsb_hostname:
-            self.adsb_host = adsb_hostname
-
-        super().start(username=username)
-
     def stop(self, silent=False):
         """
         Override the Daemon.stop() method to implement turning off the UnicornHAT HD when the daemon exits.
@@ -702,12 +731,8 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title='actions', dest='action', metavar='action')
     parser_start = subparsers.add_parser('start', help='start radarscoped')
-    parser_start.add_argument('-u, --user', dest='username', help='user to run as', type=str, default=None)
-    parser_start.add_argument('-r, --radius', dest='radius',
-                              help='scope radius in Nautical Miles', type=int, default=72)
-    parser_start.add_argument('-a, --adsb-receiver-hostname', dest='hostname',
-                              help='hostname of the ADSB receiver running dump1090-fa',
-                              type=str, default='localhost')
+    parser_start.add_argument('-c, --config-file', dest='config_file', help='path to the config file',
+                              type=str, default=None)
 
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
     parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
@@ -719,11 +744,10 @@ def main():
     action = args.action
 
     # instantiate the daemon
-    radarscoped = RadarDaemon('/var/run/radarscoped.pid')
-    radarscoped.add_airport("EIDW", 53.2517, -6.1612)
+    radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=args.config_file)
 
     if action == 'start':
-        radarscoped.start(scope_radius=args.radius, username=args.username, adsb_hostname=args.hostname)
+        radarscoped.start(username=args.username)
         pid = radarscoped.get_pid()
 
         if not pid:
