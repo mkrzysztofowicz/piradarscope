@@ -528,9 +528,11 @@ class RadarDaemon(Daemon):
         hue = self.normalise(altitude, min_value=0, max_value=40000, bottom=0.0, top=0.85)
         if highlight:
             intensity = 1
+            saturation = 0.50
         else:
             intensity = 0.66
-        return self.hsv2rgb(hue, 1, intensity)
+            saturation = 1
+        return self.hsv2rgb(hue, saturation, intensity)
 
     def plot_positions(self, positions, radius):
         """
@@ -545,7 +547,7 @@ class RadarDaemon(Daemon):
         # clear the display buffer
         uh.clear()
         rcvr = self.pixel_origin()
-        uh.set_pixel(rcvr[0], rcvr[1], 128, 128, 128)   # display the position of the receiver on the UnicornHAT
+        uh.set_pixel(rcvr[0], rcvr[1], 255, 255, 255)   # display the position of the receiver on the UnicornHAT
 
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
