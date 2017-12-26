@@ -45,6 +45,13 @@ class Daemon(object):
         self.logger.setLevel(logging.DEBUG)
 
     def setup_logging(self):
+        """
+        Set up the logging sytem.
+
+        This will set the format for all log messages, configure the logging system to send messages to syslog via
+        a special file /dev/log. In addition, the logging system will be configured to log all uncaught exceptions
+        to assist in troubleshooting.
+        """
 
         logformatter = logging.Formatter('%(name)s[%(process)s]: [%(levelname)s] %(message)s')
 
@@ -61,6 +68,9 @@ class Daemon(object):
         sys.excepthook = self.exception_log_handler
 
     def exception_log_handler(self, type, value, tb):
+        """
+        The uncaught exceptions log handler method. This will log any uncaught exception.
+        """
         self.logger.exception('Uncaught exception: {}'.format(str(value)))
 
     def attach_stream(self, name, mode):
@@ -71,6 +81,10 @@ class Daemon(object):
         os.dup2(stream.fileno(), getattr(sys, name).fileno())
 
     def dettach_process(self):
+        """
+        Detach the process from the environment.
+        """
+
         self.fork()  # first fork, detach from parent
 
         # Become a process group and session group leader
@@ -94,15 +108,32 @@ class Daemon(object):
             raise SystemExit(1)
 
     def create_pidfile(self):
+        """
+        Create a pid file and save the current pid.
+        """
         atexit.register(self.delete_pidfile)
         pid = str(os.getpid())
         open(self.pidfile, 'w+').write("{}\n".format(pid))
 
     def delete_pidfile(self):
+        """
+        Remove the pid file
+        """
         os.remove(self.pidfile)
 
-    # noinspection PyMethodMayBeStatic
-    def pid_exists(self, pid):
+    @staticmethod
+    def pid_exists(pid):
+        """
+        Check if a process with a given process ID is already running.
+
+        This method uses a fact that kill signal 0 doesn't actually do anything to a running process. If a process
+        with a given PID does exist and the user doesn't have the permissions to send it a signal, the permissions
+        denied exception will be raised (meaning the process with a given ID *does* exist), or nothing will happen
+        at all. If the process doesn't exist, ProcessLookupError exception will be raised instead.
+
+        :param int pid: process ID to check
+        :return: False if no process with a given PID is running, True otherwise
+        """
         if pid < 0:
             return False
         try:
@@ -113,6 +144,11 @@ class Daemon(object):
             return True
 
     def get_pid(self):
+        """
+        Return the Process ID of the running process.
+        :return: pid of the currently running process
+        :rtype: int
+        """
         try:
             pf = open(self.pidfile, 'r')
             pid = int(pf.read().strip())
@@ -122,6 +158,11 @@ class Daemon(object):
         return pid
 
     def status(self):
+        """
+        This method runs when the 'status' action was specified as run time argument to the daemon.
+        It will return a dict with two fields: a message to say if the daemon is running and a pid (or None).
+        :return: a dict with a message and a pid. If not running, pid will be None.
+        """
         pid = self.get_pid()
         if pid and self.pid_exists(pid):
             message = "{} is running, pid: {}".format(self.name, pid)
@@ -134,6 +175,11 @@ class Daemon(object):
         }
 
     def daemonize(self):
+        """
+        Make a daemon out of the process by dettaching from the environment and forking. If username is specified,
+        this method will also cause the daemon to drop privileges to those of the specified user.
+        Also register sigterm handler.
+        """
         self.dettach_process()
 
         # Flush I/O buffers
@@ -253,6 +299,12 @@ class Daemon(object):
         os.umask(0o22)
 
     def sigterm_handler(self, signo, frame):
+        """
+        Sigterm handler method. By default this will simply log a message to say the daemon is terminating and
+        then exit.
+
+        If any extra functionality needed, this method should be overridden in the child class.
+        """
         self.logger.warning("Exiting.".format(signo))
         raise SystemExit(1)
 
