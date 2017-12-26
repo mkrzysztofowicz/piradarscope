@@ -67,7 +67,7 @@ class Daemon(object):
         # catch all unhandled exceptions
         sys.excepthook = self.exception_log_handler
 
-    def exception_log_handler(self, type, value, tb):
+    def exception_log_handler(self, atype, value, tb):
         """
         The uncaught exceptions log handler method. This will log any uncaught exception.
         """
@@ -85,7 +85,7 @@ class Daemon(object):
         Detach the process from the environment.
         """
 
-        self.fork()  # first fork, detach from parent
+        self.fork()     # first fork, detach from parent
 
         # Become a process group and session group leader
         os.setsid()
@@ -334,6 +334,21 @@ class RadarDaemon(Daemon):
         self.aircrafturl = "dump1090-fa/data/aircraft.json"
         self.scope_radius = None
         self.logger.setLevel(logging.INFO)
+        self.airports = list()
+
+    def add_airport(self, icao_code, latitude, longitude):
+        """
+        Add an airport to the static list of airports for plotting
+        :param str icao_code: ICAO code of the airport (e.g. EIDW for Dublin)
+        :param float latitude: latitude of the ARP
+        :param float longitude: longitude of the ARP
+        """
+
+        self.airports.append({
+            "icao_code": icao_code,
+            "lat": latitude,
+            "lon": longitude
+        })
 
     @staticmethod
     def lon_length(latitude):
@@ -586,7 +601,7 @@ class RadarDaemon(Daemon):
             saturation = 1
         return self.hsv2rgb(hue, saturation, intensity)
 
-    def plot_positions(self, positions, radius):
+    def plot(self, positions, radius):
         """
         Plot aircraft positions on the UnicornHAT HD.
 
@@ -600,6 +615,11 @@ class RadarDaemon(Daemon):
         uh.clear()
         rcvr = self.pixel_origin()
         uh.set_pixel(rcvr[0], rcvr[1], 255, 255, 255)   # display the position of the receiver on the UnicornHAT
+
+        for airport in self.airports:
+            pixel = self.pixel_pos(radius, origin, (airport["lat"], airport["lon"]))
+            colour = (32, 32, 32)
+            uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
@@ -635,7 +655,7 @@ class RadarDaemon(Daemon):
                     ac_positions.append([lat, lon, alt])
 
             self.logger.debug('{} aircraft in range'.format(len(ac_positions)))
-            self.plot_positions(ac_positions, self.scope_radius)
+            self.plot(ac_positions, self.scope_radius)
             time.sleep(1)
 
     def start(self, scope_radius=None, username=None, adsb_hostname=None):
@@ -700,6 +720,7 @@ def main():
 
     # instantiate the daemon
     radarscoped = RadarDaemon('/var/run/radarscoped.pid')
+    radarscoped.add_airport("EIDW", 53.2517, 6.1612)
 
     if action == 'start':
         radarscoped.start(scope_radius=args.radius, username=args.username, adsb_hostname=args.hostname)
