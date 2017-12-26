@@ -720,7 +720,7 @@ def main():
 
     # instantiate the daemon
     radarscoped = RadarDaemon('/var/run/radarscoped.pid')
-    radarscoped.add_airport("EIDW", 53.2517, 6.1612)
+    radarscoped.add_airport("EIDW", 53.2517, -6.1612)
 
     if action == 'start':
         radarscoped.start(scope_radius=args.radius, username=args.username, adsb_hostname=args.hostname)
