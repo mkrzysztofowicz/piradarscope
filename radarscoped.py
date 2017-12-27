@@ -74,12 +74,10 @@ class Daemon(object):
         console_handler.setFormatter(logformatter)
         self.logger.addHandler(console_handler)
 
-        try:
+        if os.path.exists('/dev/log'):
             syslog_handler = logging.handlers.SysLogHandler('/dev/log')
             syslog_handler.setFormatter(logformatter)
             self.logger.addHandler(syslog_handler)
-        except Exception as e:
-            self.logger.warning('Problem adding syslog handler. {}: {}'.format(type(e).__name__, e))
 
         # catch all unhandled exceptions
         sys.excepthook = self.exception_log_handler
@@ -354,10 +352,10 @@ class RadarDaemon(Daemon):
         self.adsb_host = 'localhost'
         self.receiverurl = "http://{}/dump1090-fa/data/receiver.json".format(self.adsb_host)
         self.aircrafturl = "http://{}/dump1090-fa/data/aircraft.json".format(self.adsb_host)
-        self.scope_radius = None
-        self.scope_brightness = None
-        self.airport_brightness = None
-        self.scope_rotation = None
+        self.scope_radius = 60
+        self.scope_brightness = 0.5
+        self.airport_brightness = 0.2
+        self.scope_rotation = 0
         self.airports = list()
         self.aircraft_in_range = 0
 
@@ -368,10 +366,16 @@ class RadarDaemon(Daemon):
         Override the Daemon.configure() method to configure RadarDaemon.
         """
 
+        self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+
         if not self.config_file:
+            self.logger.info('No configuration file specified. Running with defaults')
             return
 
-        self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+        if not os.path.exists(self.config_file):
+            print("Configuration file {} does not exist. Exiting".format(self.config_file))
+            raise SystemExit(1)
+
         self.configuration.read(self.config_file)
 
         if self.configuration.has_section('main'):

@@ -13,9 +13,9 @@ class RadarScopeTestCase(unittest.TestCase):
 
     def setUp(self):
         self.radard = radarscoped.RadarDaemon('/tmp/test_radard.pid')
-        self.radard.config_file = 'radarscope.conf'
 
     def test_configuration(self):
+        self.radard.config_file = 'radarscope.conf'
         self.radard.configure()
 
         self.assertEqual(self.radard.username, 'pi')
@@ -38,6 +38,29 @@ class RadarScopeTestCase(unittest.TestCase):
         self.assertEqual(egns['icao_code'], 'egns')
         self.assertEqual(egns['lat'], 54.08)
         self.assertEqual(egns['lon'], -4.63)
+
+    def test_configuration_no_config_file(self):
+        self.radard.config_file = None
+        self.radard.configure()
+
+        self.assertEqual(self.radard.username, None)
+        self.assertEqual(self.radard.scope_radius, 60)
+        self.assertEqual(self.radard.scope_brightness, 0.5)
+        self.assertEqual(self.radard.airport_brightness, 0.2)
+        self.assertEqual(self.radard.scope_rotation, 0)
+        self.assertEqual(self.radard.adsb_host, 'localhost')
+        self.assertEqual(self.radard.aircrafturl, 'http://localhost/dump1090-fa/data/aircraft.json')
+        self.assertEqual(self.radard.receiverurl, 'http://localhost/dump1090-fa/data/receiver.json')
+
+        self.assertEqual(len(self.radard.airports), 0)
+
+    def test_configuration_file_not_exists(self):
+        self.radard.config_file = '/this/file/does/not/exist.conf'
+
+        with self.assertRaises(SystemExit) as cm:
+            self.radard.configure()
+
+        self.assertEqual(cm.exception.code, 1)
 
     def test_add_airport(self):
         eick = {
@@ -68,8 +91,8 @@ class RadarScopeTestCase(unittest.TestCase):
 
     def test_pixel_origin(self):
         px_origin = self.radard.pixel_origin()
-        self.assertEqual(7, px_origin[0])
-        self.assertEqual(7, px_origin[1])
+        self.assertEqual(8, px_origin[0])
+        self.assertEqual(8, px_origin[1])
 
     def test_pixel_radius(self):
         radius = self.radard.pixel_radius()
@@ -79,10 +102,10 @@ class RadarScopeTestCase(unittest.TestCase):
         origin = (53, -6)
 
         positions = [
-            ((55, -6), (9, 15)),
-            ((50, -6), (9, 0)),
-            ((53, -10), (0, 7)),
-            ((53, -2), (15, 7))
+            ((55, -6), (8, 15)),
+            ((50, -6), (8, 0)),
+            ((53, -10), (0, 8)),
+            ((53, -2), (15, 8))
         ]
 
         for position in positions:
