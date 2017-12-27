@@ -796,6 +796,7 @@ def main():
 
     # instantiate the daemon
     radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=config_file)
+    radarscoped.configure()
 
     if action == 'start':
         radarscoped.start()
