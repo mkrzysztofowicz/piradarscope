@@ -806,7 +806,7 @@ def main():
 
     elif action == 'status':
         status = radarscoped.status()
-        print(status["msg"])
+        print(status["message"])
 
     raise SystemExit(0)
 
