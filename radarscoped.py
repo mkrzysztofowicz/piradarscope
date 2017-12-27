@@ -24,7 +24,11 @@ import sys
 import time
 import urllib.request
 
-import unicornhathd as uh
+try:
+    import unicornhathd as uh
+except ImportError:
+    import mock_unicornhathd as uh
+    print('Warning. UnicornHAT HD module not found. Using a mock module instead', file=sys.stderr)
 
 
 class Daemon(object):
@@ -45,10 +49,7 @@ class Daemon(object):
         self.logger = logging.getLogger(self.name)
         self.setup_logging()
         self.config_file = config_file
-
-        if self.config_file is not None:
-            self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-            self.configure()
+        self.configuration = None
 
     def configure(self):
         """
@@ -357,6 +358,10 @@ class RadarDaemon(Daemon):
         Override the Daemon.configure() method to configure RadarDaemon.
         """
 
+        if not self.config_file:
+            return
+
+        self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
         self.configuration.read(self.config_file)
 
         if self.configuration.has_section('main'):
