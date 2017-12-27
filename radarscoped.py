@@ -717,7 +717,7 @@ class RadarDaemon(Daemon):
         :return:
         """
 
-        rcvr = self.get_receiver_origin()
+        rcvr = self.pixel_origin()
         for position in positions:
             pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
 
