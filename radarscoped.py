@@ -524,8 +524,8 @@ class RadarDaemon(Daemon):
         """
 
         shape = uh.get_shape()
-        x = math.floor((shape[0]-1) / 2)
-        y = math.floor((shape[1]-1) / 2)
+        x = math.floor(shape[0] / 2)
+        y = math.floor(shape[1] / 2)
         return int(x), int(y)
 
     @staticmethod
