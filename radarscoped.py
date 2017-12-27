@@ -784,6 +784,13 @@ class RadarDaemon(Daemon):
         Override the Daemon.stop() method to implement turning off the UnicornHAT HD when the daemon exits.
         :param bool silent: when set to true, this will log a message to indicate the daemon has been stopped.
         """
+
+        brange = int(self.scope_brightness * 100)
+        for i in range(brange):
+            brightness = (100 - i) / 100
+            uh.brightness(brightness)
+            time.sleep(0.01)
+
         uh.off()
         super().stop(silent)
 
