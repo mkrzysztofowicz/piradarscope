@@ -348,6 +348,7 @@ class RadarDaemon(Daemon):
         self.aircrafturl = "http://{}/dump1090-fa/data/aircraft.json".format(self.adsb_host)
         self.scope_radius = None
         self.airports = list()
+        self.aircraft_in_range = 0
 
         super().__init__(pidfile, config_file, stdin, stdout, stderr, daemon_name="radarscoped")
 
@@ -740,7 +741,10 @@ class RadarDaemon(Daemon):
                         alt = None      # set to unknown value
                     ac_positions.append([lat, lon, alt])
 
-            self.logger.info('{} aircraft in range'.format(len(ac_positions)))
+            if len(ac_positions) != self.aircraft_in_range:
+                self.aircraft_in_range = len(ac_positions)
+                self.logger.info('{} aircraft in range'.format(self.aircraft_in_range))
+
             self.plot(ac_positions, self.scope_radius)
             time.sleep(1)
 
