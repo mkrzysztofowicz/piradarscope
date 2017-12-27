@@ -23,9 +23,9 @@ class RadarScopeTestCase(unittest.TestCase):
         self.assertEqual(self.radard.scope_brightness, 0.5)
         self.assertEqual(self.radard.airport_brightness, 0.2)
         self.assertEqual(self.radard.scope_rotation, 0)
-        self.assertEqual(self.radard.adsb_host, 'localhost')
-        self.assertEqual(self.radard.aircrafturl, 'http://localhost/dump1090-fa/data/aircraft.json')
-        self.assertEqual(self.radard.receiverurl, 'http://localhost/dump1090-fa/data/receiver.json')
+        self.assertEqual(self.radard.adsb_host, 'piradar')
+        self.assertEqual(self.radard.aircrafturl, 'http://piradar/dump1090-fa/data/aircraft.json')
+        self.assertEqual(self.radard.receiverurl, 'http://piradar/dump1090-fa/data/receiver.json')
 
         self.assertEqual(len(self.radard.airports), 4)
 
@@ -68,8 +68,8 @@ class RadarScopeTestCase(unittest.TestCase):
 
     def test_pixel_origin(self):
         px_origin = self.radard.pixel_origin()
-        self.assertEqual(8, px_origin[0])
-        self.assertEqual(8, px_origin[1])
+        self.assertEqual(7, px_origin[0])
+        self.assertEqual(7, px_origin[1])
 
     def test_pixel_radius(self):
         radius = self.radard.pixel_radius()
@@ -79,10 +79,10 @@ class RadarScopeTestCase(unittest.TestCase):
         origin = (53, -6)
 
         positions = [
-            ((55, -6), (8, 15)),
-            ((50, -6), (8, 0)),
-            ((53, -10), (0, 8)),
-            ((53, -2), (15, 8))
+            ((55, -6), (9, 15)),
+            ((50, -6), (9, 0)),
+            ((53, -10), (0, 7)),
+            ((53, -2), (15, 7))
         ]
 
         for position in positions:

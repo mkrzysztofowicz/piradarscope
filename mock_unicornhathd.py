@@ -17,12 +17,14 @@ def show():
     pass
 
 def set_pixel(x, y, r, g, b):
-    pass
+    print('UnicornHAT HD: setting pixel ({}, {}, {}, {}, {})'.format(x, y, r, g, b))
 
 def brightness(b):
+    print('UnicornHAT HD: setting brightness to: {}'.format(b))
     pass
 
 def rotation(r):
+    print('UnicornHAT HD: setting rotation to: {}'.format(r))
     pass
 
 def get_shape():

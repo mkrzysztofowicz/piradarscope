@@ -50,6 +50,7 @@ class Daemon(object):
         self.setup_logging()
         self.config_file = config_file
         self.configuration = None
+        self.dont_daemonize = False
 
     def configure(self):
         """
@@ -73,9 +74,12 @@ class Daemon(object):
         console_handler.setFormatter(logformatter)
         self.logger.addHandler(console_handler)
 
-        syslog_handler = logging.handlers.SysLogHandler('/dev/log')
-        syslog_handler.setFormatter(logformatter)
-        self.logger.addHandler(syslog_handler)
+        try:
+            syslog_handler = logging.handlers.SysLogHandler('/dev/log')
+            syslog_handler.setFormatter(logformatter)
+            self.logger.addHandler(syslog_handler)
+        except Exception as e:
+            self.logger.warning('Problem adding syslog handler. {}: {}'.format(type(e).__name__, e))
 
         # catch all unhandled exceptions
         sys.excepthook = self.exception_log_handler
@@ -193,6 +197,9 @@ class Daemon(object):
         this method will also cause the daemon to drop privileges to those of the specified user.
         Also register sigterm handler.
         """
+        if self.dont_daemonize:
+            return
+
         self.dettach_process()
 
         # Flush I/O buffers
@@ -517,8 +524,8 @@ class RadarDaemon(Daemon):
         """
 
         shape = uh.get_shape()
-        x = math.floor(shape[0] / 2)
-        y = math.floor(shape[1] / 2)
+        x = math.floor((shape[0]-1) / 2)
+        y = math.floor((shape[1]-1) / 2)
         return int(x), int(y)
 
     @staticmethod
@@ -532,7 +539,7 @@ class RadarDaemon(Daemon):
         """
 
         shape = uh.get_shape()
-        radius = math.floor(min(shape[0] / 2, shape[1] / 2))
+        radius = math.floor(max(shape[0] / 2, shape[1] / 2))
         return radius
 
     def pixel_pos(self, radius, origin, position):
@@ -793,6 +800,8 @@ def main():
     parser_start = subparsers.add_parser('start', help='start radarscoped')
     parser_start.add_argument('-c, --config-file', dest='config_file', help='path to the config file',
                               type=str, default=None)
+    parser_start.add_argument('-f, --foreground', dest='foreground', help='run in foreground',
+                              action='store_true', default=False)
 
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
     parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
@@ -810,6 +819,7 @@ def main():
 
     # instantiate the daemon
     radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=config_file)
+    radarscoped.dont_daemonize = args.foreground
     radarscoped.configure()
 
     if action == 'start':
