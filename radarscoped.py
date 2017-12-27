@@ -48,7 +48,7 @@ class Daemon(object):
         self.config_file = config_file
 
         if self.config_file is not None:
-            self.configuration = configparser.ConfigParser()
+            self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
             self.configure()
 
     def configure(self):
@@ -220,7 +220,6 @@ class Daemon(object):
         """
 
         self.logger.info("Starting.")
-
         self.username = username
 
         # check for a pid to see if the daemon is already running
@@ -273,6 +272,11 @@ class Daemon(object):
         Restart the daemon
         """
         self.stop(silent=True)
+
+        if self.config_file is not None:
+            self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
+            self.configure()
+
         self.start()
 
     def drop_privileges(self):
@@ -650,6 +654,57 @@ class RadarDaemon(Daemon):
             saturation = 1
         return self.hsv2rgb(hue, saturation, intensity)
 
+    def plot_airports(self, airports, origin, radius):
+        """
+        Plot all airports on the UnicornHAT HD
+
+        :param airports: a list of airports; each element in the list is a dict() containing the following fields: \
+            icao_code, lat, lon
+        :type airports: list[dict[str, float, float]]
+        :param (float, float) origin: GPS coordinates of the receiver as lat, lon
+        :param int radius: scope radius in Nautical Miles
+        """
+        for airport in airports:
+            pixel = self.pixel_pos(radius, origin, (airport["lat"], airport["lon"]))
+
+            # don't plot an airport if it's at or beyond the scope margin
+            if pixel[0] == 0 or pixel[0] == 15 or pixel[1] == 0 or pixel[1] == 15:
+                continue
+
+            colour = (32, 32, 32)
+            uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
+
+    def plot_receiver(self):
+        """
+        Plot the position of the ADSB receiver on the Radar Scope
+        """
+        rcvr = self.pixel_origin()
+        uh.set_pixel(rcvr[0], rcvr[1], 255, 255, 255)  # display the position of the receiver on the UnicornHAT
+
+    def plot_aircraft(self, positions, origin, radius):
+        """
+        Plot the positions of all aircraft in range of the ADSB receiver on the Radar Scope
+
+        :param list[(float, float, float)] positions:  list of aircraft positions, \
+                where each element of the list is a tuple of lat, lon, altitude for a given aircraft
+        :param [float, float] origin: the latitude and longitude of the ADSB receiver
+        :param int radius: the radius of the Radar Scope in Nautical Miles
+        :return:
+        """
+
+        rcvr = self.get_receiver_origin()
+        for position in positions:
+            pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
+
+            # make the pixel extra bright if it's directly overhead the receiver
+            if pixel == rcvr:
+                highlight = True
+            else:
+                highlight = False
+
+            colour = self.get_altitude_colour(position[2], highlight=highlight)
+            uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
+
     def plot(self, positions, radius=60):
         """
         Plot aircraft positions on the UnicornHAT HD.
@@ -662,25 +717,10 @@ class RadarDaemon(Daemon):
 
         # clear the display buffer
         uh.clear()
-        rcvr = self.pixel_origin()
-        uh.set_pixel(rcvr[0], rcvr[1], 255, 255, 255)   # display the position of the receiver on the UnicornHAT
 
-        for airport in self.airports:
-            pixel = self.pixel_pos(radius, origin, (airport["lat"], airport["lon"]))
-            colour = (32, 32, 32)
-            uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
-
-        for position in positions:
-            pixel = self.pixel_pos(radius, origin, (position[0], position[1]))
-
-            # make the pixel extra bright if it's directly overhead the receiver
-            if pixel == rcvr:
-                highlight = True
-            else:
-                highlight = False
-
-            colour = self.get_altitude_colour(position[2], highlight=highlight)
-            uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
+        self.plot_receiver()
+        self.plot_airports(self.airports, origin, radius)
+        self.plot_aircraft(positions, origin, radius)
 
         # redraw the screen
         uh.show()
