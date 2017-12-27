@@ -348,6 +348,9 @@ class RadarDaemon(Daemon):
         self.receiverurl = "http://{}/dump1090-fa/data/receiver.json".format(self.adsb_host)
         self.aircrafturl = "http://{}/dump1090-fa/data/aircraft.json".format(self.adsb_host)
         self.scope_radius = None
+        self.scope_brightness = None
+        self.airport_brightness = None
+        self.scope_rotation = None
         self.airports = list()
         self.aircraft_in_range = 0
 
@@ -375,6 +378,9 @@ class RadarDaemon(Daemon):
 
         if self.configuration.has_section('scope'):
             self.scope_radius = self.configuration.getint('scope', 'radius', fallback=60)
+            self.scope_brightness = self.configuration.getfloat('scope', 'scope_brightness', fallback=0.5)
+            self.airport_brightness = self.configuration.getfloat('scope', 'airport_brightness', fallback=0.5)
+            self.scope_rotation = self.configuration.getint('scope', 'rotation', fallback=0)
 
         if self.configuration.has_section('ADSB'):
             self.adsb_host = self.configuration.get('ADSB', 'adsb_host', fallback='localhost')
@@ -667,6 +673,8 @@ class RadarDaemon(Daemon):
         :param (float, float) origin: GPS coordinates of the receiver as lat, lon
         :param int radius: scope radius in Nautical Miles
         """
+
+        brightness_scaling_factor = 64
         for airport in airports:
             pixel = self.pixel_pos(radius, origin, (airport["lat"], airport["lon"]))
 
@@ -674,7 +682,9 @@ class RadarDaemon(Daemon):
             if pixel[0] == 0 or pixel[0] == 15 or pixel[1] == 0 or pixel[1] == 15:
                 continue
 
-            colour = (4, 4, 4)
+            # this calculates the shade of gray (brightness) of the airport depending on the
+            # configuration setting
+            colour = colorsys.hsv_to_rgb(0, 0, self.airport_brightness * brightness_scaling_factor)
             uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
     def plot_receiver(self):
@@ -732,6 +742,10 @@ class RadarDaemon(Daemon):
         """
         The RadarDaemon's run loop (the worker).
         """
+
+        # preconfigure the display
+        uh.brightness(self.scope_brightness)
+        uh.rotation(self.scope_rotation)
 
         while True:
             all_aircraft = self.get_aircraft()

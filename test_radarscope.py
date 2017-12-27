@@ -20,6 +20,9 @@ class RadarScopeTestCase(unittest.TestCase):
 
         self.assertEqual(self.radard.username, 'pi')
         self.assertEqual(self.radard.scope_radius, 72)
+        self.assertEqual(self.radard.scope_brightness, 0.5)
+        self.assertEqual(self.radard.airport_brightness, 0.2)
+        self.assertEqual(self.radard.scope_rotation, 0)
         self.assertEqual(self.radard.adsb_host, 'localhost')
         self.assertEqual(self.radard.aircrafturl, 'http://localhost/dump1090-fa/data/aircraft.json')
         self.assertEqual(self.radard.receiverurl, 'http://localhost/dump1090-fa/data/receiver.json')

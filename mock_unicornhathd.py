@@ -19,5 +19,11 @@ def show():
 def set_pixel(x, y, r, g, b):
     pass
 
+def brightness(b):
+    pass
+
+def rotation(r):
+    pass
+
 def get_shape():
     return 16, 16
