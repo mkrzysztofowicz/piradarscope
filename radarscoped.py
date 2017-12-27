@@ -783,8 +783,13 @@ def main():
     args = parser.parse_args()
     action = args.action
 
+    if args.config_file:
+        config_file = args.config_file
+    else:
+        config_file = None
+
     # instantiate the daemon
-    radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=args.config_file)
+    radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=config_file)
 
     if action == 'start':
         radarscoped.start(username=args.username)
