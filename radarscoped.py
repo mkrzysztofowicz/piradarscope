@@ -214,13 +214,12 @@ class Daemon(object):
         if self.username:
             self.drop_privileges()
 
-    def start(self, username=None):
+    def start(self):
         """
         Start the daemon
         """
 
         self.logger.info("Starting.")
-        self.username = username
 
         # check for a pid to see if the daemon is already running
         pid = self.get_pid()
@@ -792,7 +791,7 @@ def main():
     radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=config_file)
 
     if action == 'start':
-        radarscoped.start(username=args.username)
+        radarscoped.start()
         pid = radarscoped.get_pid()
 
         if not pid:
