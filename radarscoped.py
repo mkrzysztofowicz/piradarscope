@@ -44,11 +44,10 @@ class Daemon(object):
         self.name = daemon_name
         self.logger = logging.getLogger(self.name)
         self.setup_logging()
-        self.logger.setLevel(logging.DEBUG)
         self.config_file = config_file
 
         if self.config_file is not None:
-            self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
+            self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
             self.configure()
 
     def configure(self):
@@ -66,8 +65,7 @@ class Daemon(object):
         a special file /dev/log. In addition, the logging system will be configured to log all uncaught exceptions
         to assist in troubleshooting.
         """
-
-        logformatter = logging.Formatter('%(name)s[%(process)s]: [%(levelname)s] %(message)s')
+        logformatter = logging.Formatter('%(name)s[%(process)s]: [%(levelname)s] %(funcName)s: %(message)s')
 
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.ERROR)
@@ -345,18 +343,19 @@ class RadarDaemon(Daemon):
         """
         Override the init() method of the Daemon class to add extra properties.
         """
-        super().__init__(pidfile, config_file, stdin, stdout, stderr, daemon_name="radarscoped")
         self.adsb_host = 'localhost'
         self.receiverurl = "http://{}/dump1090-fa/data/receiver.json".format(self.adsb_host)
         self.aircrafturl = "http://{}/dump1090-fa/data/aircraft.json".format(self.adsb_host)
         self.scope_radius = None
-        self.logger.setLevel(logging.INFO)
         self.airports = list()
+
+        super().__init__(pidfile, config_file, stdin, stdout, stderr, daemon_name="radarscoped")
 
     def configure(self):
         """
         Override the Daemon.configure() method to configure RadarDaemon.
         """
+
         self.configuration.read(self.config_file)
 
         if self.configuration.has_section('main'):
@@ -369,8 +368,7 @@ class RadarDaemon(Daemon):
             self.logger.setLevel(loglevel)
 
         if self.configuration.has_section('scope'):
-            if not self.scope_radius:
-                self.scope_radius = self.configuration.getint('scope', 'radius', fallback=60)
+            self.scope_radius = self.configuration.getint('scope', 'radius', fallback=60)
 
         if self.configuration.has_section('ADSB'):
             self.adsb_host = self.configuration.get('ADSB', 'adsb_host', fallback='localhost')
@@ -387,7 +385,7 @@ class RadarDaemon(Daemon):
             for airport in self.configuration.items(section='airports'):
                 icao_code = airport[0]
                 coordinates = airport[1].strip().split(',')
-                self.add_airport(icao_code, coordinates[0], coordinates[1])
+                self.add_airport(icao_code, float(coordinates[0]), float(coordinates[1]))
 
     def add_airport(self, icao_code, latitude, longitude):
         """
@@ -742,7 +740,7 @@ class RadarDaemon(Daemon):
                         alt = None      # set to unknown value
                     ac_positions.append([lat, lon, alt])
 
-            self.logger.debug('{} aircraft in range'.format(len(ac_positions)))
+            self.logger.info('{} aircraft in range'.format(len(ac_positions)))
             self.plot(ac_positions, self.scope_radius)
             time.sleep(1)
 
