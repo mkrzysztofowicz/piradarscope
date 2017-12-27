@@ -674,7 +674,7 @@ class RadarDaemon(Daemon):
             if pixel[0] == 0 or pixel[0] == 15 or pixel[1] == 0 or pixel[1] == 15:
                 continue
 
-            colour = (32, 32, 32)
+            colour = (4, 4, 4)
             uh.set_pixel(pixel[0], pixel[1], colour[0], colour[1], colour[2])
 
     def plot_receiver(self):
