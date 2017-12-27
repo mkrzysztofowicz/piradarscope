@@ -783,7 +783,7 @@ def main():
     args = parser.parse_args()
     action = args.action
 
-    if args.config_file:
+    if hasattr(args, 'config_file'):
         config_file = args.config_file
     else:
         config_file = None
@@ -805,7 +805,8 @@ def main():
         radarscoped.restart()
 
     elif action == 'status':
-        radarscoped.status()
+        status = radarscoped.status()
+        print(status["msg"])
 
     raise SystemExit(0)
 
