@@ -812,14 +812,15 @@ def main():
     args = parser.parse_args()
     action = args.action
 
-    if hasattr(args, 'config_file'):
-        config_file = args.config_file
-    else:
-        config_file = None
+    if not hasattr(args, 'config_file'):
+        args.config_file = None
 
     # instantiate the daemon
-    radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=config_file)
-    radarscoped.dont_daemonize = args.foreground
+    radarscoped = RadarDaemon('/var/run/radarscoped.pid', config_file=args.config_file)
+
+    if hasattr(args, 'foreground'):
+        radarscoped.dont_daemonize = args.foreground
+
     radarscoped.configure()
 
     if action == 'start':
