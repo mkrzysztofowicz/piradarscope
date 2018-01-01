@@ -276,7 +276,6 @@ class Daemon(object):
         """
         self.stop(silent=True)
 
-
         if self.config_file is not None:
             self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
             self.configure()
