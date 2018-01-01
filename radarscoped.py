@@ -478,8 +478,7 @@ class RadarDaemon(Daemon):
             }
         }
 
-    @staticmethod
-    def get_json(url):
+    def get_json(self, url):
         """
         Fetch JSON data from a web server and return a dictionary with same.
 
@@ -487,8 +486,15 @@ class RadarDaemon(Daemon):
         :return: a dictionary with JSON data
         :rtype: dict
         """
+       
+        json_data = dict()
 
-        request = urllib.request.urlopen(url)
+        try:
+            request = urllib.request.urlopen(url)
+        except urllib.error.URLError as e:
+            self.logger.error("{}: Error opening url: {}".format(type(e).__name__, url))
+            return json_data
+
         data = request.read()
         encoding = request.info().get_content_charset('utf-8')
         json_data = json.loads(data.decode(encoding))
@@ -503,7 +509,11 @@ class RadarDaemon(Daemon):
         """
 
         data = self.get_json(self.aircrafturl)
-        return data["aircraft"]
+        
+        if 'aircraft' in data.keys():
+            return data["aircraft"]
+        else:
+            return data
 
     def get_receiver_origin(self):
         """
@@ -514,9 +524,12 @@ class RadarDaemon(Daemon):
         """
 
         data = self.get_json(self.receiverurl)
-        latitude = data["lat"]
-        longitude = data["lon"]
-        return latitude, longitude
+        if "lat" in data and "lon" in data:
+            latitude = data["lat"]
+            longitude = data["lon"]
+            return latitude, longitude
+        else:
+            return None, None
 
     @staticmethod
     def pixel_origin():
