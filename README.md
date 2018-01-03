@@ -87,3 +87,8 @@ To make the daemon start automatically at boot, add the following line at the bo
 /usr/local/bin/radarscoped start -c /etc/radarscope.conf
 ```
 
+## How does it look like when it's running
+
+If everything worked well, you should see something similar to below:
+
+![PiRadarScope](https://cloud.beautifulocean.org/s/dDIvhjl3UuT46Le)
