@@ -91,4 +91,4 @@ To make the daemon start automatically at boot, add the following line at the bo
 
 If everything worked well, you should see something similar to below:
 
-![PiRadarScope](https://cloud.beautifulocean.org/s/dDIvhjl3UuT46Le)
+![PiRadarScope](images/PiRadarScope.jpg)
