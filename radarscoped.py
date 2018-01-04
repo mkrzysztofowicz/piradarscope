@@ -821,7 +821,9 @@ def main():
                               action='store_true', default=False)
 
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
-    parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
+
+    # 'restart' action disabled for now, needs a rethink
+    # parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
     parser_status = subparsers.add_parser('status', help='get status for radarscoped')
 
     subparsers.required = True
