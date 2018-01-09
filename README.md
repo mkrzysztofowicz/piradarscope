@@ -29,7 +29,13 @@ Note: the ADSB receiver software can, but does not have to, run on the same Rasp
  receiver): 
  
  * http://localhost/dump1090-fa/data/aircraft.json
- * http://localhost/dump1090-fa/data/receiver.json 
+ * http://localhost/dump1090-fa/data/receiver.json
+ 
+Additionally, the RaspberryPi needs to have the UnicornHat HD installed along with the `unicornhathd` Python module. 
+Note, currently the older UnicornHAT has not been tested and therefore is not supported. It may work with only 
+minimal code changes, so if you have one around, why not giving it a go? 
+
+Finally, all code has been tested with Python 3. It may work with Python 2, but YMMV. 
  
 ## Installation
  
