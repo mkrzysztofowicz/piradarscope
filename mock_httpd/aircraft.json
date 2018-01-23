@@ -1,0 +1,11 @@
+{ "now" : 1516655801.7,
+  "messages" : 74522051,
+  "aircraft" : [
+    {"hex":"4ca292","squawk":"3043","flight":"EIN34Y  ","lat":53.235696,"lon":-5.725573,"nucp":7,"seen_pos":6.4,"altitude":8100,"vert_rate":-512,"track":328,"speed":285,"mlat":[],"tisb":[],"messages":22,"seen":0.3,"rssi":-11.5},
+    {"hex":"4ca836","squawk":"4224","altitude":15425,"mlat":[],"tisb":[],"messages":4,"seen":17.3,"rssi":-14.4},
+    {"hex":"4ca79d","squawk":"4227","flight":"RYR174  ","lat":53.495407,"lon":-6.185695,"nucp":7,"seen_pos":0.6,"altitude":11625,"vert_rate":4608,"track":95,"speed":362,"category":"A3","mlat":[],"tisb":[],"messages":1686,"seen":0.3,"rssi":-6.1},
+    {"hex":"4ca816","squawk":"4224","flight":"RYR156  ","lat":53.516098,"lon":-5.583095,"nucp":7,"seen_pos":6.4,"altitude":22325,"vert_rate":2432,"track":87,"speed":442,"category":"A0","mlat":[],"tisb":[],"messages":4279,"seen":6.1,"rssi":-9.7},
+    {"hex":"406f9a","lat":52.739682,"lon":-5.875488,"nucp":0,"seen_pos":3.1,"altitude":23000,"vert_rate":0,"track":139,"speed":327,"mlat":["lat","lon","altitude","track","speed","vert_rate"],"tisb":[],"messages":1726,"seen":3.1,"rssi":-6.8},
+    {"hex":"400e74","squawk":"1463","lat":53.448579,"lon":-7.936733,"nucp":7,"seen_pos":30.8,"altitude":34000,"vert_rate":0,"track":294,"speed":409,"mlat":[],"tisb":[],"messages":3915,"seen":0.1,"rssi":-12.1}
+  ]
+}

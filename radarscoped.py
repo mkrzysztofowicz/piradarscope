@@ -19,7 +19,9 @@ import logging.handlers
 import math
 import os
 import pwd
+import select
 import signal
+import socket
 import sys
 import time
 import urllib.request
@@ -211,6 +213,7 @@ class Daemon(object):
         self.create_pidfile()
 
         # Setup signal handlers
+        # signal.signal(signal.SIGHUP, self.sighup_handler)
         signal.signal(signal.SIGINT, self.sigterm_handler)
         signal.signal(signal.SIGQUIT, self.sigterm_handler)
         signal.signal(signal.SIGTERM, self.sigterm_handler)
@@ -276,7 +279,10 @@ class Daemon(object):
         """
         self.stop(silent=True)
 
+        print('RESTARTING')
+
         if self.config_file is not None:
+            self.logger.info("Reloading configuration")
             self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
             self.configure()
 
@@ -326,8 +332,16 @@ class Daemon(object):
 
         If any extra functionality needed, this method should be overridden in the child class.
         """
-        self.logger.warning("Exiting.".format(signo))
+
+        self.logger.warning("Exiting.")
         raise SystemExit(1)
+
+    # def sighup_handler(self):
+    #     """
+    #     Sighup handler method. Just calls restart()
+    #     """
+    #     self.logger.info('Restarting.')
+    #     self.restart()
 
     def run(self):
         """
@@ -358,6 +372,9 @@ class RadarDaemon(Daemon):
         self.scope_rotation = 0
         self.airports = list()
         self.aircraft_in_range = 0
+
+        self.sockaddr = ('localhost', 12345)
+        self.socket = None
 
         super().__init__(pidfile, config_file, stdin, stdout, stderr, daemon_name="radarscoped")
 
@@ -409,6 +426,32 @@ class RadarDaemon(Daemon):
                 icao_code = airport[0]
                 coordinates = airport[1].strip().split(',')
                 self.add_airport(icao_code, float(coordinates[0]), float(coordinates[1]))
+
+    def setup_server_socket(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind(self.sockaddr)
+        self.socket.listen()
+
+    def destroy_server_socket(self):
+        # self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
+        self.socket = None
+
+    def connection_handler(self, socket):
+        conn, _ = socket.accept()
+        buffer = conn.recv(4096)
+        cmd = buffer.decode('utf-8')
+
+        if cmd == 'restart':
+            conn.close()
+            self.restart()
+
+    def send_command(self, command):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(self.sockaddr)
+        sock.send(bytes(command.encode('utf-8')))
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
 
     def add_airport(self, icao_code, latitude, longitude):
         """
@@ -771,7 +814,10 @@ class RadarDaemon(Daemon):
         uh.brightness(self.scope_brightness)
         uh.rotation(self.scope_rotation)
 
+        rlist = [self.socket]
+
         while True:
+
             all_aircraft = self.get_aircraft()
             ac_positions = list()
             for plane in all_aircraft:
@@ -789,7 +835,14 @@ class RadarDaemon(Daemon):
                 self.logger.info('{} aircraft in range'.format(self.aircraft_in_range))
 
             self.plot(ac_positions, self.scope_radius)
-            time.sleep(1)
+
+            ready_sock, _, _ = select.select(rlist, [], [], 1)
+            for rsock in ready_sock:
+                self.connection_handler(rsock)
+
+    def start(self):
+        self.setup_server_socket()
+        super().start()
 
     def stop(self, silent=False):
         """
@@ -797,6 +850,7 @@ class RadarDaemon(Daemon):
         :param bool silent: when set to true, this will log a message to indicate the daemon has been stopped.
         """
         uh.off()
+        self.destroy_server_socket()
         super().stop(silent)
 
     def sigterm_handler(self, signo, frame):
@@ -804,8 +858,8 @@ class RadarDaemon(Daemon):
         Override the Daemon.sigterm_handle() method to turn off the UnicornHAT HD when the daemon process is terminated.
         """
         uh.off()
+        self.destroy_server_socket()
         super().sigterm_handler(signo, frame)
-
 
 def main():
     """
@@ -823,7 +877,7 @@ def main():
     parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
 
     # 'restart' action disabled for now, needs a rethink
-    # parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
+    parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
     parser_status = subparsers.add_parser('status', help='get status for radarscoped')
 
     subparsers.required = True
@@ -852,8 +906,8 @@ def main():
     elif action == 'stop':
         radarscoped.stop()
 
-    # elif action == 'restart':
-    #     radarscoped.restart()
+    elif action == 'restart':
+        radarscoped.send_command('restart')
 
     elif action == 'status':
         status = radarscoped.status()

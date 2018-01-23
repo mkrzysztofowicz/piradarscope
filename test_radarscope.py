@@ -5,9 +5,13 @@ To run:
 nosetests -s test_radarscoped.py
 """
 
+import json
+import socket
 import unittest
-import radarscoped
+from multiprocessing import Process
 
+import radarscoped
+import mock_httpd
 
 class RadarScopeTestCase(unittest.TestCase):
 
@@ -23,9 +27,9 @@ class RadarScopeTestCase(unittest.TestCase):
         self.assertEqual(self.radard.scope_brightness, 0.5)
         self.assertEqual(self.radard.airport_brightness, 0.2)
         self.assertEqual(self.radard.scope_rotation, 0)
-        self.assertEqual(self.radard.adsb_host, 'piradar')
-        self.assertEqual(self.radard.aircrafturl, 'http://piradar/dump1090-fa/data/aircraft.json')
-        self.assertEqual(self.radard.receiverurl, 'http://piradar/dump1090-fa/data/receiver.json')
+        self.assertEqual(self.radard.adsb_host, 'localhost:10080')
+        self.assertEqual(self.radard.aircrafturl, 'http://localhost:10080/dump1090-fa/data/aircraft.json')
+        self.assertEqual(self.radard.receiverurl, 'http://localhost:10080/dump1090-fa/data/receiver.json')
 
         self.assertEqual(len(self.radard.airports), 4)
 
@@ -72,6 +76,52 @@ class RadarScopeTestCase(unittest.TestCase):
         self.radard.add_airport(eick['icao_code'], eick['lat'], eick['lon'])
         self.assertEqual(self.radard.airports[0], eick)
 
+    def test_get_json(self):
+        data = self.radard.get_json('http://localhost:10080/dump1090-fa/data/receiver.json')
+        self.assertEqual(data['version'], '3.5.3')
+
+    def test_get_aircraft(self):
+        self.radard.config_file = 'radarscope.conf'
+        self.radard.configure()
+
+        ac = self.radard.get_aircraft()
+        self.assertEqual(len(ac), 6)
+
+    def test_get_receiver_origin(self):
+        self.radard.config_file = 'radarscope.conf'
+        self.radard.configure()
+
+        rcvr = self.radard.get_receiver_origin()
+        self.assertEqual(rcvr[0], 53.34)
+        self.assertEqual(rcvr[1], -6.22)
+
+    def test_setup_server_socket(self):
+        self.assertIsNone(self.radard.socket)
+
+        self.radard.setup_server_socket()
+        self.assertEqual(self.radard.socket.family, socket.AF_INET)
+        self.assertEqual(self.radard.socket.type, socket.SOCK_STREAM)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        result = sock.connect_ex(('localhost', 12345))
+        sock.close()
+        self.assertEqual(result, 0)
+
+    def test_destroy_server_socket(self):
+        self.radard.setup_server_socket()
+        self.assertEqual(self.radard.socket.family, socket.AF_INET)
+        self.assertEqual(self.radard.socket.type, socket.SOCK_STREAM)
+
+        self.radard.destroy_server_socket()
+        self.assertIsNone(self.radard.socket)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(2)
+        result = sock.connect_ex(('localhost', 12345))
+        sock.close()
+        self.assertNotEqual(result, 0)
+
     def test_lon_length(self):
         latitude = 30
         self.assertAlmostEqual(self.radard.lon_length(latitude), 51.96, 2)
@@ -111,6 +161,45 @@ class RadarScopeTestCase(unittest.TestCase):
         for position in positions:
             pixel = self.radard.pixel_pos(72, origin, position[0])
             self.assertEqual(pixel, position[1])
+
+    def test_normalise(self):
+        normalise = self.radard.normalise
+        n = normalise(22500, min_value=0, max_value=45000, bottom=0.0, top=1.0)
+        self.assertEqual(n, 0.5)
+
+        n = normalise(0, min_value=0, max_value=45000, bottom=0.0, top=1.0)
+        self.assertEqual(n, 0.0)
+
+        n = normalise(45000, 0, 45000, 0.0, 1.0)
+        self.assertEqual(n, 1)
+
+        n = normalise(-1, 0, 100, 0.0, 1.0)
+        self.assertEqual(n, 0)
+
+        n = normalise(150, 0, 100, 0.0, 1.0)
+        self.assertEqual(n, 1)
+
+        n = normalise(11250)
+        self.assertEqual(n, 0.25)
+
+        n = normalise(100, 0, 1000, 0.0, 10.0)
+        self.assertEqual(n, 1)
+
+    def test_get_altitude_colour(self):
+        a = self.radard.get_altitude_colour(0)
+        self.assertEqual(a, (168, 0, 0))
+
+        a = self.radard.get_altitude_colour(45000)
+        self.assertEqual(a, (168, 0, 151))
+
+        a = self.radard.get_altitude_colour(-1)
+        self.assertEqual(a, (64, 64, 64))
+
+        a = self.radard.get_altitude_colour(None)
+        self.assertEqual(a, (64, 64, 64))
+
+        a = self.radard.get_altitude_colour('invalid')
+        self.assertEqual(a, (64, 64, 64))
 
 
 if __name__ == '__main__':
