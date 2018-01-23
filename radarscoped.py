@@ -279,8 +279,6 @@ class Daemon(object):
         """
         self.stop(silent=True)
 
-        print('RESTARTING')
-
         if self.config_file is not None:
             self.logger.info("Reloading configuration")
             self.configuration = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation)
