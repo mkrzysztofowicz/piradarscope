@@ -85,7 +85,7 @@ class RadarScopeTestCase(unittest.TestCase):
         self.radard.configure()
 
         ac = self.radard.get_aircraft()
-        self.assertEqual(len(ac), 6)
+        self.assertEqual(len(ac), 9)
 
     def test_get_receiver_origin(self):
         self.radard.config_file = 'radarscope.conf'
