@@ -429,7 +429,7 @@ class RadarDaemon(Daemon):
     def setup_server_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(self.sockaddr)
-        self.socket.listen(backlog=5)
+        self.socket.listen()
 
     def destroy_server_socket(self):
         # self.socket.shutdown(socket.SHUT_RDWR)
