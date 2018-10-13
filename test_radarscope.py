@@ -122,9 +122,11 @@ class RadarScopeTestCase(unittest.TestCase):
         sock.close()
         self.assertNotEqual(result, 0)
 
-    def test_lon_length(self):
+    def test_departure(self):
         latitude = 30
-        self.assertAlmostEqual(self.radard.lon_length(latitude), 51.96, 2)
+        self.assertAlmostEqual(self.radard.departure(latitude), 51.96, 2)
+        chlon = 2
+        self.assertAlmostEqual(self.radard.departure(latitude, chlon), 103.92, 2)
 
     def test_coord_span(self):
         radius = 72

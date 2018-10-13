@@ -25,6 +25,7 @@ import socket
 import sys
 import time
 import urllib.request
+import urllib.error
 
 try:
     import unicornhathd as uh
@@ -428,7 +429,7 @@ class RadarDaemon(Daemon):
     def setup_server_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(self.sockaddr)
-        self.socket.listen()
+        self.socket.listen(backlog=5)
 
     def destroy_server_socket(self):
         # self.socket.shutdown(socket.SHUT_RDWR)
@@ -466,16 +467,16 @@ class RadarDaemon(Daemon):
         })
 
     @staticmethod
-    def lon_length(latitude):
+    def departure(lat, chlon=1):
         """
-        Calculate the length in Nautical Miles of 1 degree of longitude at a given latitude.
-        At the equator, 1 degree of longitude will be 1NM, while at the pole, it will be 0.
+        Calculate the geographical departure - an East-West distance at a given latitude.
 
-        :param float latitude: the latitude at which to calculate the length of 1 degree of longitude.
-        :return: a fraction of the Nautical Mile representing the distance of 1 degree of longitude.
+        :param float lat: the latitude at which to calculate the departure.
+        :param float chlon: change of longitude in degrees
+        :return float: geographic departure in Nautical Miles.
         """
 
-        return 60 * math.cos(math.radians(latitude))
+        return chlon * 60 * math.cos(math.radians(lat))
 
     def coord_span(self, radius, origin=(0, 0)):
         """
@@ -503,7 +504,7 @@ class RadarDaemon(Daemon):
         lon = origin[1]
 
         lat_delta = float(radius / 60.0)
-        lon_delta = float(radius / self.lon_length(lat))
+        lon_delta = float(radius / self.departure(lat))
 
         return {
             "lat": {
@@ -822,7 +823,11 @@ class RadarDaemon(Daemon):
                 if "lat" in plane and "lon" in plane:
                     lat = plane["lat"]
                     lon = plane["lon"]
-                    if "altitude" in plane:
+                    if "alt_baro" in plane:
+                        alt = plane["alt_baro"]
+                    elif "alt_geom" in plane:
+                        alt = plane["alt_geom"]
+                    elif "altitude" in plane:
                         alt = plane["altitude"]
                     else:
                         alt = None      # set to unknown value
