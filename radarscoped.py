@@ -219,7 +219,6 @@ class Daemon(object):
         signal.signal(signal.SIGQUIT, self.sigterm_handler)
         signal.signal(signal.SIGTERM, self.sigterm_handler)
 
-        signal.signal(signal.SIGINFO, self.siginfo_handler)
         signal.signal(signal.SIGUSR1, self.siginfo_handler)
 
         if self.username:
