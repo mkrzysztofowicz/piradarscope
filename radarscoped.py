@@ -219,7 +219,8 @@ class Daemon(object):
         signal.signal(signal.SIGQUIT, self.sigterm_handler)
         signal.signal(signal.SIGTERM, self.sigterm_handler)
 
-        signal.signal(signal.SIGUSR1, self.siginfo_handler)
+        signal.signal(signal.SIGUSR1, self.sigusr_handler)
+        signal.signal(signal.SIGUSR2, self.sigusr_handler)
 
         if self.username:
             self.drop_privileges()
@@ -337,20 +338,15 @@ class Daemon(object):
         self.logger.warning("Exiting.")
         raise SystemExit(1)
 
-    def siginfo_handler(self, signo, frame):
+    def sigusr_handler(self, signo, frame):
         """
         Siginfo handler method. By default his will simply display the status.
         """
 
+        self.logger.info("Received SIGUSR signal: {}".format(signo))
         status = self.status()
+        self.logger.info(status["message"])
         print(status["message"])
-
-    # def sighup_handler(self):
-    #     """
-    #     Sighup handler method. Just calls restart()
-    #     """
-    #     self.logger.info('Restarting.')
-    #     self.restart()
 
     def run(self):
         """
