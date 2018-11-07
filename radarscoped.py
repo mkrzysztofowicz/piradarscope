@@ -887,7 +887,6 @@ def main():
                         action='store_true', default=False)
 
     args = parser.parse_args()
-    action = args.action
 
     if not hasattr(args, 'config_file'):
         args.config_file = None
