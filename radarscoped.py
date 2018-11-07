@@ -89,7 +89,7 @@ class Daemon(object):
         """
         The uncaught exceptions log handler method. This will log any uncaught exception.
         """
-        self.logger.exception('Uncaught exception: {}'.format(str(value)))
+        self.logger.exception('Uncaught exception: {}: {}: {}'.format(str(atype), str(value), str(tb)))
 
     def attach_stream(self, name, mode):
         """
@@ -219,6 +219,9 @@ class Daemon(object):
         signal.signal(signal.SIGQUIT, self.sigterm_handler)
         signal.signal(signal.SIGTERM, self.sigterm_handler)
 
+        signal.signal(signal.SIGINFO, self.siginfo_handler)
+        signal.signal(signal.SIGUSR1, self.siginfo_handler)
+
         if self.username:
             self.drop_privileges()
 
@@ -334,6 +337,14 @@ class Daemon(object):
 
         self.logger.warning("Exiting.")
         raise SystemExit(1)
+
+    def siginfo_handler(self, signo, frame):
+        """
+        Siginfo handler method. By default his will simply display the status.
+        """
+
+        status = self.status()
+        print(status["message"])
 
     # def sighup_handler(self):
     #     """
@@ -870,20 +881,10 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(title='actions', dest='action', metavar='action')
-    parser_start = subparsers.add_parser('start', help='start radarscoped')
-    parser_start.add_argument('-c, --config-file', dest='config_file', help='path to the config file',
-                              type=str, default=None)
-    parser_start.add_argument('-f, --foreground', dest='foreground', help='run in foreground',
-                              action='store_true', default=False)
-
-    parser_stop = subparsers.add_parser('stop', help='stop radarscoped')
-
-    # 'restart' action disabled for now, needs a rethink
-    parser_restart = subparsers.add_parser('restart', help='restart radarscoped')
-    parser_status = subparsers.add_parser('status', help='get status for radarscoped')
-
-    subparsers.required = True
+    parser.add_argument('-c, --config-file', dest='config_file', help='path to the config file',
+                        type=str, default=None)
+    parser.add_argument('-f, --foreground', dest='foreground', help='run in foreground',
+                        action='store_true', default=False)
 
     args = parser.parse_args()
     action = args.action
@@ -898,23 +899,11 @@ def main():
         radarscoped.dont_daemonize = args.foreground
 
     radarscoped.configure()
+    radarscoped.start()
+    pid = radarscoped.get_pid()
 
-    if action == 'start':
-        radarscoped.start()
-        pid = radarscoped.get_pid()
-
-        if not pid:
-            print("Error starting radarscoped")
-
-    elif action == 'stop':
-        radarscoped.stop()
-
-    elif action == 'restart':
-        radarscoped.send_command('restart')
-
-    elif action == 'status':
-        status = radarscoped.status()
-        print(status["message"])
+    if not pid:
+        print("Error starting radarscoped")
 
     raise SystemExit(0)
 
