@@ -1,0 +1,16 @@
+#
+# systemd configuration file for PiRadarScoped
+#
+
+[Unit]
+Description=PiRadarScoped
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/radarscoped -c /etc/radarscope.conf
+PIDFile=/var/run/radarscoped.pid
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

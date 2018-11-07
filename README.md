@@ -67,33 +67,23 @@ The installation steps are as follows:
 
 ## Usage
 
-1. Start the daemon using the following command:
-
-    ```bash
-    sudo radarscoped start -c /etc/radarscope.conf
-    ```
-
-2. Stop the daemon with: 
-
-    ```bash
-    sudo radarscoped stop
-    ```
-
-3. Check if the daemon is running
-
-    ```bash
-    sudo radarscoped status 
-    ```
-
-NOTE: All the above commands should be issued with `sudo`, however the daemon drops privileges as soon as it starts 
-to make sure it doesn't run as the root user. 
-
-To make the daemon start automatically at boot, add the following line at the bottom of `/etc/rc.local`:
+Start the daemon using the following command:
 
 ```bash
-# Start PiRadarScope Daemon
-/usr/local/bin/radarscoped start -c /etc/radarscope.conf
+sudo radarscoped -c /etc/radarscope.conf
 ```
+
+NOTE: The above command should be issued with `sudo`, however the daemon drops privileges as soon as it starts 
+to make sure it doesn't run as the root user. 
+
+To make the daemon start automatically at boot, you can use `systemd` with the included `radarscoped.service` file. 
+To do so, copy `radarscoped.service` into `/etc/systemd/system` and issue the following commands:
+
+```bash
+sudo cp radarscoped.service /etc/systemd/system
+sudo systemctl enable radarscoped.service
+sudo systemctl start radarscoped
+``` 
 
 ## How does it look like when it's running
 
